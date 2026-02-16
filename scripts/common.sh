@@ -16,7 +16,18 @@ net.bridge.bridge-nf-call-ip6tables=1
 EOF
 sysctl --system
 
-# Install packages
+# Proper DNS fix for Ubuntu 22.04
+mkdir -p /etc/systemd/resolved.conf.d
+
+cat <<EOF > /etc/systemd/resolved.conf.d/dns.conf
+[Resolve]
+DNS=8.8.8.8 8.8.4.4
+FallbackDNS=1.1.1.1
+EOF
+
+systemctl restart systemd-resolved
+
+# Install base packages
 apt-get update -y
 apt-get install -y apt-transport-https ca-certificates curl containerd
 
@@ -24,7 +35,6 @@ apt-get install -y apt-transport-https ca-certificates curl containerd
 mkdir -p /etc/containerd
 containerd config default > /etc/containerd/config.toml
 
-# Use systemd cgroup (IMPORTANT)
 sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' \
   /etc/containerd/config.toml
 
@@ -32,6 +42,8 @@ systemctl restart containerd
 systemctl enable containerd
 
 # ===== Kubernetes =====
+mkdir -p /etc/apt/keyrings
+
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key \
  | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
